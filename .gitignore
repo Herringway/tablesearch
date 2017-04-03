@@ -1,5 +1,10 @@
-*.exe
-*.dll
 .dub
-*.sln
-*.suo
+docs.json
+__dummy.html
+*.o
+*.obj
+*.exe
+*.lib
+*.dll
+dub.selections.json
+*.a
