@@ -44,12 +44,38 @@ int main(string[] argv)
 
 	const file = cast(ubyte[])read(argv[1]);
 
-	const searchArrays = colourSearch ?
-		buildColourSearchArray!RGB888(argv[2..$], colourFormat) :
-		buildSearchArrays(argv[2..$].to!(ulong[]), unsigned);
+	Match[] matches;
+
+	if (options.colourSearch) {
+		final switch (options.colourFormat) {
+			case Format.BGR555:
+				matches = searchFor(buildColourSearchArray!BGR555(argv[2..$]), file, options);
+				break;
+			case Format.BGR565:
+				matches = searchFor(buildColourSearchArray!BGR565(argv[2..$]), file, options);
+				break;
+			case Format.RGB888:
+				matches = searchFor(buildColourSearchArray!RGB888(argv[2..$]), file, options);
+				break;
+			case Format.RGBA8888:
+				matches = searchFor(buildColourSearchArray!RGBA8888(argv[2..$]), file, options);
+				break;
+			case Format.Invalid:
+				writeln("Invalid format");
+				return 2;
+		}
+	} else {
+		matches = searchFor(buildSearchArrays(argv[2..$].to!(ulong[]), options.unsigned), file, options);
+	}
+	foreach (match; matches) {
+		writefln!"Found match: 0x%X - %s distance, %s size"(match.offset, match.distance, match.size);
+	}
+	return 0;
+}
+auto searchFor(const ubyte[][][] searchArrays, const ubyte[] file, const Options options) @safe {
 	writefln!"Searching for: %((%([%-(%02X %)]%|, %))%|, %)"(searchArrays);
 	Match[] matches;
-	auto offset = options.offset;
+	size_t offset = options.offset;
 	while (offset < file.length) {
 		foreach (searchArray; searchArrays) {
 			if (searchArray[0].length+offset >= file.length) {
@@ -77,10 +103,7 @@ int main(string[] argv)
 		}
 		offset++;
 	}
-	foreach (match; matches) {
-		writefln!"Found match: 0x%X - %s distance, %s size"(match.offset, match.distance, match.size);
-	}
-	return 0;
+	return matches;
 }
 ubyte[][][] buildSearchArrays(ulong[] vals, const bool unsigned) @safe {
 	ubyte[][][] output;
@@ -112,13 +135,15 @@ ubyte[][][] buildSearchArrays(ulong[] vals, const bool unsigned) @safe {
 	return output;
 }
 
-ubyte[][][] buildColourSearchArray(Fmt)(string[] vals, const Format format) @safe {
+ubyte[][][] buildColourSearchArray(Fmt)(string[] vals) @safe {
 	ubyte[][] output;
 	foreach (val; vals) {
 		ubyte r, g, b;
 		val.formattedRead!"%s,%s,%s"(r, g, b);
 		const colour = Fmt(r, g, b);
-		output ~= colorToBytes(colour, format);
+		ubyte[] tmp;
+		tmp ~= colorToBytes(colour);
+		output ~= tmp;
 	}
 	return [output];
 }
