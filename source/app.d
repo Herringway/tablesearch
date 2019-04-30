@@ -17,28 +17,31 @@ struct Match {
 	size_t size;
 }
 
-int main(string[] argv)
-{
+struct Options {
+	size_t offset = 0;
 	ulong maxDist = 200;
-	string offsetstr = "0";
 	ulong minDist = 1;
 	bool colourSearch;
 	Format colourFormat = Format.BGR555;
 	bool unsigned = false;
+}
+
+int main(string[] argv)
+{
+	Options options;
 	auto info = getopt(argv, std.getopt.config.bundling,
-		   "offset|o", "Offset to start searching at (default: 0)", &offsetstr,
-		   "unsigned|u", "Whether or not the values are unsigned (default: false)", &unsigned,
-		   "coloursearch|c", "Whether or not to look for colours instead of integers (default: false)", &colourSearch,
-		   "colourformat|f", "Format of colours to look for (default: BGR555)", &colourFormat,
-		   "maxdist|m", "Maximum distance between values (default: 200)", &maxDist,
-		   "mindist|d", "Minimum distance between values (default: 1)", &minDist);
+		   "offset|o", "Offset to start searching at (default: 0)", (string s, string o) { options.offset = parseOffset(o); },
+		   "unsigned|u", "Whether or not the values are unsigned (default: false)", &options.unsigned,
+		   "coloursearch|c", "Whether or not to look for colours instead of integers (default: false)", &options.colourSearch,
+		   "colourformat|f", "Format of colours to look for (default: BGR555)", &options.colourFormat,
+		   "maxdist|m", "Maximum distance between values (default: 200)", &options.maxDist,
+		   "mindist|d", "Minimum distance between values (default: 1)", &options.minDist);
 
 	if (info.helpWanted || argv.length < 4) {
 		defaultGetoptPrinter(format!"Usage: %s file val1 val2 ..."(argv[0]), info.options);
 		return 1;
 	}
 
-	ulong offset = parseOffset(offsetstr);
 	const file = cast(ubyte[])read(argv[1]);
 
 	const searchArrays = colourSearch ?
@@ -46,15 +49,16 @@ int main(string[] argv)
 		buildSearchArrays(argv[2..$].to!(ulong[]), unsigned);
 	writefln!"Searching for: %((%([%-(%02X %)]%|, %))%|, %)"(searchArrays);
 	Match[] matches;
+	auto offset = options.offset;
 	while (offset < file.length) {
 		foreach (searchArray; searchArrays) {
 			if (searchArray[0].length+offset >= file.length) {
 				continue;
 			}
 			if (file[offset..offset+searchArray[0].length] == searchArray[0]) {
-				const startDistance = max(searchArray[0].length, minDist);
-				enforce(startDistance <= maxDist, "Maximum distance smaller than value size");
-				foreach (dist; startDistance..maxDist) {
+				const startDistance = max(searchArray[0].length, options.minDist);
+				enforce(startDistance <= options.maxDist, "Maximum distance smaller than value size");
+				foreach (dist; startDistance..options.maxDist) {
 					bool matched;
 					foreach (i, byteSequence; searchArray[1..$]) {
 						const newOffset = offset + dist*(i+1);
