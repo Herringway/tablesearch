@@ -9,9 +9,6 @@ import std.getopt;
 import std.meta;
 import std.stdio;
 
-void printHelp(string progname) {
-		stderr.writefln("Usage: %s file val1 val2 ...", progname);
-}
 struct Match {
 	size_t offset;
 	size_t distance;
@@ -20,19 +17,20 @@ struct Match {
 
 int main(string[] argv)
 {
-	if (argv.length < 4) {
-		printHelp(argv[0]);
-		return 1;
-	}
 	ulong maxDist = 200;
 	string offsetstr = "0";
 	ulong minDist = 1;
 	bool unsigned = false;
-	getopt(argv, std.getopt.config.bundling,
-		   "offset|o", &offsetstr,
-		   "unsigned|u", &unsigned,
-		   "maxdist|m", &maxDist,
-		   "mindist|d", &minDist);
+	auto info = getopt(argv, std.getopt.config.bundling,
+		   "offset|o", "Offset to start searching at (default: 0)", &offsetstr,
+		   "unsigned|u", "Whether or not the values are unsigned (default: false)", &unsigned,
+		   "maxdist|m", "Maximum distance between values (default: 200)", &maxDist,
+		   "mindist|d", "Minimum distance between values (default: 1)", &minDist);
+
+	if (info.helpWanted || argv.length < 4) {
+		defaultGetoptPrinter(format!"Usage: %s file val1 val2 ..."(argv[0]), info.options);
+		return 1;
+	}
 
 	ulong offset = parseOffset(offsetstr);
 	const file = cast(ubyte[])read(argv[1]);
