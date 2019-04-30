@@ -9,6 +9,8 @@ import std.getopt;
 import std.meta;
 import std.stdio;
 
+import pixelatrix;
+
 struct Match {
 	size_t offset;
 	size_t distance;
@@ -20,10 +22,14 @@ int main(string[] argv)
 	ulong maxDist = 200;
 	string offsetstr = "0";
 	ulong minDist = 1;
+	bool colourSearch;
+	Format colourFormat = Format.BGR555;
 	bool unsigned = false;
 	auto info = getopt(argv, std.getopt.config.bundling,
 		   "offset|o", "Offset to start searching at (default: 0)", &offsetstr,
 		   "unsigned|u", "Whether or not the values are unsigned (default: false)", &unsigned,
+		   "coloursearch|c", "Whether or not to look for colours instead of integers (default: false)", &colourSearch,
+		   "colourformat|f", "Format of colours to look for (default: BGR555)", &colourFormat,
 		   "maxdist|m", "Maximum distance between values (default: 200)", &maxDist,
 		   "mindist|d", "Minimum distance between values (default: 1)", &minDist);
 
@@ -35,7 +41,9 @@ int main(string[] argv)
 	ulong offset = parseOffset(offsetstr);
 	const file = cast(ubyte[])read(argv[1]);
 
-	const searchArrays = buildSearchArrays(argv[2..$].to!(ulong[]), unsigned);
+	const searchArrays = colourSearch ?
+		buildColourSearchArray!RGB888(argv[2..$], colourFormat) :
+		buildSearchArrays(argv[2..$].to!(ulong[]), unsigned);
 	writefln!"Searching for: %((%([%-(%02X %)]%|, %))%|, %)"(searchArrays);
 	Match[] matches;
 	while (offset < file.length) {
@@ -98,6 +106,17 @@ ubyte[][][] buildSearchArrays(ulong[] vals, const bool unsigned) @safe {
 		}
 	}}
 	return output;
+}
+
+ubyte[][][] buildColourSearchArray(Fmt)(string[] vals, const Format format) @safe {
+	ubyte[][] output;
+	foreach (val; vals) {
+		ubyte r, g, b;
+		val.formattedRead!"%s,%s,%s"(r, g, b);
+		const colour = Fmt(r, g, b);
+		output ~= colorToBytes(colour, format);
+	}
+	return [output];
 }
 
 @safe unittest {
