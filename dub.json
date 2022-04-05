@@ -4,6 +4,7 @@
 	"copyright": "Copyright © 2022, Cameron \"Herringway\" Ross",
 	"authors": ["Cameron \"Herringway\" Ross"],
 	"dependencies": {
-		"pixelatrix": "*"
+		"pixelatrix": "~>0.0.1",
+		"magicalrainbows": "~>0.1.3"
 	}
 }

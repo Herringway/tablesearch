@@ -1,6 +1,7 @@
 module app;
 
 import std.algorithm;
+import std.array;
 import std.conv;
 import std.exception;
 import std.file;
@@ -10,6 +11,7 @@ import std.meta;
 import std.stdio;
 
 import pixelatrix;
+import magicalrainbows;
 
 struct Match {
 	size_t offset;
@@ -22,7 +24,7 @@ struct Options {
 	ulong maxDist = 200;
 	ulong minDist = 1;
 	bool colourSearch;
-	Format colourFormat = Format.BGR555;
+	SupportedFormat colourFormat = SupportedFormat.bgr555;
 	bool unsigned = false;
 }
 
@@ -47,25 +49,9 @@ int main(string[] argv)
 	Match[] matches;
 
 	if (options.colourSearch) {
-		final switch (options.colourFormat) {
-			case Format.BGR555:
-				matches = searchFor(buildColourSearchArray!BGR555(argv[2..$]), file, options);
-				break;
-			case Format.BGR565:
-				matches = searchFor(buildColourSearchArray!BGR565(argv[2..$]), file, options);
-				break;
-			case Format.RGB888:
-				matches = searchFor(buildColourSearchArray!RGB888(argv[2..$]), file, options);
-				break;
-			case Format.RGBA8888:
-				matches = searchFor(buildColourSearchArray!RGBA8888(argv[2..$]), file, options);
-				break;
-			case Format.Invalid:
-				writeln("Invalid format");
-				return 2;
-		}
+		matches = searchFor(buildColourSearchArray(argv[2..$], options.colourFormat), file, options);
 	} else {
-		matches = searchFor(buildSearchArrays(argv[2..$].to!(ulong[]), options.unsigned), file, options);
+		matches = searchFor(buildSearchArrays(argv[2..$].map!parseOffset.array, options.unsigned), file, options);
 	}
 	foreach (match; matches) {
 		writefln!"Found match: 0x%X - %s distance, %s size"(match.offset, match.distance, match.size);
@@ -88,6 +74,10 @@ auto searchFor(const ubyte[][][] searchArrays, const ubyte[] file, const Options
 					bool matched;
 					foreach (i, byteSequence; searchArray[1..$]) {
 						const newOffset = offset + dist*(i+1);
+						if (newOffset+byteSequence.length >= file.length) {
+							matched = false;
+							break;
+						}
 						const testNext = file[newOffset..newOffset+byteSequence.length];
 						if (testNext != byteSequence) {
 							matched = false;
@@ -135,19 +125,6 @@ ubyte[][][] buildSearchArrays(ulong[] vals, const bool unsigned) @safe {
 	return output;
 }
 
-ubyte[][][] buildColourSearchArray(Fmt)(string[] vals) @safe {
-	ubyte[][] output;
-	foreach (val; vals) {
-		ubyte r, g, b;
-		val.formattedRead!"%s,%s,%s"(r, g, b);
-		const colour = Fmt(r, g, b);
-		ubyte[] tmp;
-		tmp ~= colorToBytes(colour);
-		output ~= tmp;
-	}
-	return [output];
-}
-
 @safe unittest {
 	assert(buildSearchArrays([4], true) ==
 		[
@@ -165,6 +142,18 @@ ubyte[][][] buildColourSearchArray(Fmt)(string[] vals) @safe {
 			]
 		]
 	);
+}
+
+ubyte[][][] buildColourSearchArray(string[] vals, SupportedFormat format) @safe {
+	ubyte[][] output;
+	foreach (val; vals) {
+		ubyte r, g, b;
+		val.formattedRead!"%s,%s,%s"(r, g, b);
+		ubyte[] tmp;
+		tmp ~= colourToBytes(r, g, b, format);
+		output ~= tmp;
+	}
+	return [output];
 }
 
 ubyte getValMinSize(long val) @safe {
@@ -201,8 +190,8 @@ ubyte getValMinSizeUnsigned(ulong val) @safe {
 		return 2;
 	return 1;
 }
-int parseOffset(string arg) {
-	int offset;
+ulong parseOffset(string arg) {
+	ulong offset;
 	if ((arg.length > 1) && (arg[1] == 'x'))
 		formattedRead(arg, "0x%x", &offset);
 	else
