@@ -26,6 +26,7 @@ struct Options {
 	bool colourSearch;
 	SupportedFormat colourFormat = SupportedFormat.bgr555;
 	bool unsigned = false;
+	ulong firstID = 0;
 }
 
 int main(string[] argv)
@@ -34,6 +35,7 @@ int main(string[] argv)
 	auto info = getopt(argv, std.getopt.config.bundling,
 		   "offset|o", "Offset to start searching at (default: 0)", (string s, string o) { options.offset = parseOffset(o); },
 		   "unsigned|u", "Whether or not the values are unsigned (default: false)", &options.unsigned,
+		   "first-id", "The id associated with the first value specified (default: 0)", &options.firstID,
 		   "coloursearch|c", "Whether or not to look for colours instead of integers (default: false)", &options.colourSearch,
 		   "colourformat|f", "Format of colours to look for (default: BGR555)", &options.colourFormat,
 		   "maxdist|m", "Maximum distance between values (default: 200)", &options.maxDist,
@@ -54,7 +56,7 @@ int main(string[] argv)
 		matches = searchFor(buildSearchArrays(argv[2..$].map!parseOffset.array, options.unsigned), file, options);
 	}
 	foreach (match; matches) {
-		writefln!"Found match: 0x%X - %s distance, %s size"(match.offset, match.distance, match.size);
+		writefln!"Found match: 0x%X - %s distance, %s size - potential start points: 0x%X - 0x%X"(match.offset, match.distance, match.size, match.offset - (options.firstID + 1) * match.distance, match.offset - options.firstID * match.distance);
 	}
 	return 0;
 }
