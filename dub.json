@@ -1,8 +1,8 @@
 {
 	"name": "tablesearch",
-	"description": "A minimal D application.",
-	"copyright": "Copyright © 2014, Cameron",
-	"authors": ["Cameron"],
+	"description": "A small utility for performing fixed-distance value searches",
+	"copyright": "Copyright © 2022, Cameron \"Herringway\" Ross",
+	"authors": ["Cameron \"Herringway\" Ross"],
 	"dependencies": {
 		"pixelatrix": "*"
 	}
