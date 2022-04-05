@@ -8,3 +8,4 @@ __dummy.html
 *.dll
 dub.selections.json
 *.a
+*.pdb
